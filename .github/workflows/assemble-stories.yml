@@ -1,0 +1,47 @@
+name: Assemble story assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+        default: stories-2026-11-27
+      dir:
+        description: Chunk directory
+        required: true
+        default: chunks/stories-2026-11-27
+      files:
+        description: Space-separated mp4 names to assemble
+        required: true
+        default: story1.mp4
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble MP4s, verify checksums, publish to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag }}
+          DIR: ${{ github.event.inputs.dir }}
+          FILES: ${{ github.event.inputs.files }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/out
+          for f in $FILES; do
+            cat "$DIR/$f.b64."* | base64 -d > "/tmp/out/$f"
+            grep " $f\$" "$DIR/SHA256SUMS.txt" > /tmp/out/check.txt
+            (cd /tmp/out && sha256sum -c check.txt)
+          done
+          ls -lh /tmp/out
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Instagram stories $TAG" --notes "Direct-download MP4 assets for Buffer scheduling ($TAG)."
+          fi
+          for f in $FILES; do
+            gh release upload "$TAG" "/tmp/out/$f" --clobber --repo "$GITHUB_REPOSITORY"
+          done
