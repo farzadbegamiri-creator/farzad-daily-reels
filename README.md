@@ -1,2 +1,5 @@
 # farzad-daily-reels
-Public media hosting for scheduled Instagram posts (direct-download video assets).
+
+Public direct-download hosting for scheduled Instagram videos (Buffer requires a public HTTPS file URL).
+
+Release assets are the source of truth. Chunk files under `chunks/` are only used to assemble releases.

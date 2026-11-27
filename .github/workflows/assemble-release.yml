@@ -1,0 +1,41 @@
+name: Assemble release assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+        default: test-2026-11-27
+      title:
+        description: Release title
+        required: true
+        default: Test Instagram videos 2026-11-27
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble MP4s, verify checksums, create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/out
+          cat chunks/story_test.mp4.b64.* | base64 -d > /tmp/out/story_test.mp4
+          cat chunks/reel_test.mp4.b64.* | base64 -d > /tmp/out/reel_test.mp4
+          ls -lh /tmp/out
+          file /tmp/out/*.mp4
+          cd /tmp/out
+          sha256sum -c "$GITHUB_WORKSPACE/chunks/SHA256SUMS.txt"
+          TAG="${{ github.event.inputs.tag }}"
+          TITLE="${{ github.event.inputs.title }}"
+          gh release create "$TAG" \
+            /tmp/out/story_test.mp4 \
+            /tmp/out/reel_test.mp4 \
+            --title "$TITLE" \
+            --notes "Direct-download MP4 assets for Buffer scheduling of the 2026-11-27 test Instagram story and reel."
